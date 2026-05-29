@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>临时邮箱接码</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ============ 顶栏 ============ -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">✉</span>
+        <div class="brand-text">
+          <h1>临时邮箱接码</h1>
+          <p>多服务聚合 · 实时收码</p>
+        </div>
+      </div>
+      <div class="status paused" id="monitorBadge" title="自动监测状态">
+        <span class="dot"></span>
+        <span id="monitorText">未开始</span>
+      </div>
+    </header>
+
+    <!-- ============ 生成区 ============ -->
+    <section class="card gen">
+      <div class="field-grid">
+        <div class="field">
+          <label for="serviceSel">邮箱服务</label>
+          <div class="select-wrap">
+            <select id="serviceSel"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="domainSel">域名</label>
+          <div class="select-wrap">
+            <select id="domainSel"><option>加载中…</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="field" id="loginRow">
+        <label for="loginInput">用户名（可选）</label>
+        <input id="loginInput" type="text" autocomplete="off" spellcheck="false" placeholder="留空则随机生成，如 mytest01" />
+      </div>
+      <button class="btn primary block" id="genBtn">
+        <span class="btn-label">生成邮箱并开始接码</span>
+        <span class="spinner" hidden></span>
+      </button>
+      <p class="hint" id="genHint"></p>
+    </section>
+
+    <!-- ============ 当前邮箱 ============ -->
+    <section class="card mailbox hidden" id="mailboxCard">
+      <div class="mb-head">
+        <span class="tag" id="svcTag">Mail.tm</span>
+        <span class="mb-meta" id="mbMeta"></span>
+        <button class="icon-btn" id="renewBtn" title="换一个新邮箱">↻ 换邮箱</button>
+      </div>
+      <div class="email-line">
+        <span class="email" id="emailText" title="点击可选中复制"></span>
+        <button class="btn copy" id="copyEmailBtn" data-copy="email">复制</button>
+      </div>
+    </section>
+
+    <!-- ============ 最新验证码 ============ -->
+    <section class="card code hidden" id="codeCard">
+      <div class="code-label">最新验证码</div>
+      <div class="code-main">
+        <span class="code-value" id="codeValue">— — — — — —</span>
+        <button class="btn copy big" id="copyCodeBtn" data-copy="code">复制</button>
+      </div>
+      <div class="code-chips" id="codeChips"></div>
+      <p class="code-tip" id="codeTip">提示：验证码可能是数字或字母组合，下方收件箱有完整邮件原文。</p>
+    </section>
+
+    <!-- ============ 收件箱 ============ -->
+    <section class="inbox">
+      <div class="inbox-head">
+        <h2>收件箱 <span class="count" id="mailCount">0</span></h2>
+        <button class="btn ghost" id="refreshBtn">立即查收</button>
+      </div>
+      <div class="mail-list" id="mailList">
+        <!-- 邮件卡片由 popup.js 渲染；初始为引导空态 -->
+        <div class="empty" id="emptyState">
+          <div class="empty-icon">📭</div>
+          <p class="empty-title">还没有生成邮箱</p>
+          <p class="empty-desc">选择上方服务与域名，点「生成邮箱并开始接码」即可自动监测来信。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 底部状态条 ============ -->
+    <footer class="footbar">
+      <label class="switch">
+        <input type="checkbox" id="monitorToggle" />
+        <span class="track"><span class="thumb"></span></span>
+        <span class="switch-label">自动监测</span>
+      </label>
+      <span class="foot-status" id="footStatus">就绪</span>
+    </footer>
+  </div>
+
+  <!-- 轻量 toast 容器 -->
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
