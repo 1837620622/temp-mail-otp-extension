@@ -277,6 +277,7 @@ async function init() {
   }
 
   // 事件绑定
+  $('#closeBtn').addEventListener('click', function () { window.close(); }); // 关闭弹窗（后台监测不受影响）
   $('#serviceSel').addEventListener('change', function () { loadDomains(this.value); });
   $('#genBtn').addEventListener('click', doGenerate);
   $('#renewBtn').addEventListener('click', function () { $('#loginInput').value = ''; doGenerate(); });

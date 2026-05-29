@@ -58,6 +58,19 @@ body {
 .brand-text h1 { font-size: 15px; font-weight: 700; letter-spacing: 0.2px; }
 .brand-text p { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.close-btn {
+  width: 28px; height: 28px; flex: none;
+  display: grid; place-items: center;
+  color: var(--muted); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.08s;
+}
+.close-btn:hover { color: #fff; background: var(--danger); border-color: var(--danger); }
+.close-btn:active { transform: scale(0.9); }
+.close-btn svg { display: block; }
+
 .status {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 11.5px; font-weight: 600;
