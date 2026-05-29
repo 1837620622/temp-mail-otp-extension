@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "临时邮箱接码",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "通用临时邮箱接码助手：聚合 mail.tm / Guerrilla Mail / TempMail.lol / TempMail.plus 多家服务，自由选择域名，自动实时监测邮件，完整显示邮件全文并智能提取验证码候选，一键复制邮箱与验证码。",
   "icons": {
     "16": "icons/icon16.png",

@@ -13,16 +13,16 @@
       <div class="brand">
         <span class="logo">✉</span>
         <div class="brand-text">
-          <h1>临时邮箱接码</h1>
+          <h1>临时邮箱接码 <span class="ver">v1.1.0</span></h1>
           <p>多服务聚合 · 实时收码</p>
         </div>
       </div>
       <div class="topbar-right">
-        <div class="status paused" id="monitorBadge" title="自动监测状态">
+        <div class="status paused" id="monitorBadge" title="生成邮箱后自动开始接码">
           <span class="dot"></span>
           <span id="monitorText">未开始</span>
         </div>
-        <button class="close-btn" id="closeBtn" title="关闭弹窗" aria-label="关闭弹窗">
+        <button class="close-btn" id="closeBtn" title="关闭窗口（后台仍继续接码，不会丢失邮箱）" aria-label="关闭窗口">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
@@ -60,7 +60,7 @@
       <div class="mb-head">
         <span class="tag" id="svcTag">Mail.tm</span>
         <span class="mb-meta" id="mbMeta"></span>
-        <button class="icon-btn" id="renewBtn" title="换一个新邮箱">↻ 换邮箱</button>
+        <button class="icon-btn" id="renewBtn" title="换邮箱（放弃当前邮箱，生成新的重新接码）">↻ 换邮箱</button>
       </div>
       <div class="email-line">
         <span class="email" id="emailText" title="点击可选中复制"></span>
@@ -100,7 +100,7 @@
       <label class="switch">
         <input type="checkbox" id="monitorToggle" />
         <span class="track"><span class="thumb"></span></span>
-        <span class="switch-label">自动监测</span>
+        <span class="switch-label">持续接码</span>
       </label>
       <span class="foot-status" id="footStatus">就绪</span>
     </footer>

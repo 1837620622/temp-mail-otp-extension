@@ -139,9 +139,7 @@ async function doGenerate() {
   const svc = services.find(function (s) { return s.key === r.service; });
   $('#svcTag').textContent = svc ? svc.name : r.service;
   $('#mbMeta').textContent = '创建于 ' + fmtTime(new Date().toISOString());
-  $('#monitorToggle').checked = true;
-  $('#monitorBadge').className = 'status live';
-  $('#monitorText').textContent = '监测中';
+  reflectMonitorUI(true, true);
   await refresh();
   startPoll();
 }
@@ -155,12 +153,7 @@ function render(st) {
     $('#svcTag').textContent = svc ? svc.name : st.service;
     $('#mbMeta').textContent = st.createdAt ? '创建于 ' + fmtTime(new Date(st.createdAt).toISOString()) : '';
   }
-  const badge = $('#monitorBadge');
-  if (st.monitoring) {
-    badge.className = 'status live'; $('#monitorText').textContent = '监测中'; $('#monitorToggle').checked = true;
-  } else {
-    badge.className = 'status paused'; $('#monitorText').textContent = st.email ? '已暂停' : '未开始'; $('#monitorToggle').checked = false;
-  }
+  reflectMonitorUI(st.monitoring, !!st.email);
   renderCodeAndMails(st.messages || []);
 }
 
@@ -287,15 +280,34 @@ async function init() {
     if (cv.textContent && !cv.classList.contains('empty')) copyText(cv.textContent, this);
   });
   $('#refreshBtn').addEventListener('click', refresh);
-  $('#monitorToggle').addEventListener('change', async function () {
-    if (this.checked) {
-      await send({ type: 'START_MONITOR' }); startPoll();
-      $('#monitorBadge').className = 'status live'; $('#monitorText').textContent = '监测中';
-    } else {
-      await send({ type: 'STOP_MONITOR' }); stopPoll();
-      $('#monitorBadge').className = 'status paused'; $('#monitorText').textContent = '已暂停';
-    }
+  $('#monitorToggle').addEventListener('change', function () { setMonitor(this.checked); });
+  // 顶部状态徽章也可点击切换监测（暂停 / 恢复），比只在底部找开关更直观
+  $('#monitorBadge').addEventListener('click', function () {
+    if (!$('#emailText').textContent) return; // 尚未生成邮箱时不可切换
+    setMonitor(!$('#monitorToggle').checked);
   });
+}
+
+// 统一的监测开关逻辑（顶部徽章与底部开关共用，状态始终同步）
+async function setMonitor(on) {
+  if (on) { await send({ type: 'START_MONITOR' }); startPoll(); }
+  else { await send({ type: 'STOP_MONITOR' }); stopPoll(); }
+  reflectMonitorUI(on, !!$('#emailText').textContent);
+}
+
+// 仅刷新监测相关 UI（徐章配色 / 文案 / 悬停提示 + 底部开关），不发网络请求
+function reflectMonitorUI(on, hasEmail) {
+  const badge = $('#monitorBadge');
+  if (on) {
+    badge.className = 'status live';
+    $('#monitorText').textContent = '监测中';
+    badge.title = '接码中 · 点击暂停';
+  } else {
+    badge.className = 'status paused';
+    $('#monitorText').textContent = hasEmail ? '已暂停' : '未开始';
+    badge.title = hasEmail ? '已暂停 · 点击继续接码' : '生成邮箱后自动开始接码';
+  }
+  $('#monitorToggle').checked = on;
 }
 
 document.addEventListener('DOMContentLoaded', init);
