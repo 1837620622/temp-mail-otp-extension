@@ -65,6 +65,10 @@ function saveState() {
   chrome.storage.local.set({ tmc_state: state });
 }
 
+// 邮件正文详情缓存（内存级，按邮件 id 缓存归一化结果），避免轮询时对同一封邮件重复拉取详情。
+// 仅在切换/重建邮箱时清空，不写入 storage，防止体积膨胀。
+let detailCache = {};
+
 /* ============================== 通用工具 ============================== */
 
 // 随机用户名（小写字母+数字，避免特殊字符被服务端拒绝）
@@ -168,6 +172,8 @@ const tmAdapter = {
     const msgs = (r.json && r.json['hydra:member']) || [];
     const list = [];
     for (const msg of msgs) {
+      const id = String(msg.id);
+      if (detailCache[id]) { list.push(detailCache[id]); continue; } // 命中缓存，跳过详情请求
       let detail = null;
       try {
         const d = await http(base + '/messages/' + msg.id, { headers: { Authorization: 'Bearer ' + state.token, Accept: 'application/ld+json' } });
@@ -176,14 +182,16 @@ const tmAdapter = {
       const src = detail || msg;
       const htmlStr = Array.isArray(src.html) ? src.html.join('\n') : (src.html || '');
       const text = (src.text && src.text.trim()) ? src.text : htmlToText(htmlStr);
-      list.push({
-        id: String(msg.id),
+      const item = {
+        id: id,
         from: (src.from && (src.from.address || src.from.name)) || '',
         subject: src.subject || '(无主题)',
         date: src.createdAt || src.date || '',
         text: text || (src.intro || ''),
         codes: extractCodeCandidates(text || src.intro || '')
-      });
+      };
+      detailCache[id] = item;
+      list.push(item);
     }
     return list;
   }
@@ -216,20 +224,24 @@ const guerrillaAdapter = {
     const arr = (r.json && r.json.list) || [];
     const list = [];
     for (const m of arr) {
+      const id = String(m.mail_id);
+      if (detailCache[id]) { list.push(detailCache[id]); continue; } // 命中缓存，跳过 fetch_email
       let body = m.mail_excerpt || '';
       try {
         const d = await http(base + '?f=fetch_email&email_id=' + encodeURIComponent(m.mail_id) + '&sid_token=' + encodeURIComponent(state.sidToken));
         if (d.json && d.json.mail_body) body = d.json.mail_body;
       } catch (_) {}
       const text = htmlToText(body);
-      list.push({
-        id: String(m.mail_id),
+      const item = {
+        id: id,
         from: m.mail_from || '',
         subject: m.mail_subject || '(无主题)',
         date: m.mail_timestamp ? new Date(m.mail_timestamp * 1000).toISOString() : (m.mail_date || ''),
         text: text,
         codes: extractCodeCandidates(text)
-      });
+      };
+      detailCache[id] = item;
+      list.push(item);
     }
     return list;
   }
@@ -253,7 +265,7 @@ const tmlolAdapter = {
     return arr.map(function (m, i) {
       const text = (m.body && m.body.trim()) ? m.body : htmlToText(m.html || '');
       return {
-        id: String(m.date || i) + '_' + i,
+        id: 'lol_' + String(m.date || '') + '_' + String(m.subject || '').slice(0, 24),
         from: m.from || '',
         subject: m.subject || '(无主题)',
         date: m.date ? new Date(m.date).toISOString() : '',
@@ -277,20 +289,24 @@ const tmplusAdapter = {
     const arr = (r.json && r.json.mail_list) || [];
     const list = [];
     for (const m of arr) {
+      const id = String(m.mail_id);
+      if (detailCache[id]) { list.push(detailCache[id]); continue; } // 命中缓存，跳过详情请求
       let text = '';
       try {
         const d = await http(base + '/mails/' + encodeURIComponent(m.mail_id) + '?email=' + encodeURIComponent(state.email) + '&epin=');
         if (d.json) text = (d.json.text && d.json.text.trim()) ? d.json.text : htmlToText(d.json.html || '');
       } catch (_) {}
       if (!text) text = m.subject || '';
-      list.push({
-        id: String(m.mail_id),
+      const item = {
+        id: id,
         from: m.from_mail || m.from_name || '',
         subject: m.subject || '(无主题)',
         date: m.time || '',
         text: text,
         codes: extractCodeCandidates(text)
-      });
+      };
+      detailCache[id] = item;
+      list.push(item);
     }
     return list;
   }
@@ -318,6 +334,7 @@ async function createMailbox(serviceKey, domain, login) {
   state.service = svc.key; state.domain = domain || '';
   state.token = ''; state.sidToken = ''; state.accountId = '';
   state.messages = []; state.lastCode = '';
+  detailCache = {}; // 换邮箱时清空详情缓存，避免串号
   try {
     const r = await ADAPTERS[svc.key].create(svc, domain, login);
     if (!r.ok) return r;

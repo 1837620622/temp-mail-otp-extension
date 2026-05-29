@@ -199,6 +199,12 @@ select:focus, input[type="text"]:focus {
   word-break: break-all; line-height: 1.1;
 }
 .code-value.empty { color: var(--muted-2); font-size: 22px; letter-spacing: 2px; text-shadow: none; }
+.code-value.flash { animation: codeFlash 0.7s ease; }
+@keyframes codeFlash {
+  0%   { transform: scale(1);    text-shadow: 0 0 22px rgba(52, 211, 153, 0.35); }
+  30%  { transform: scale(1.14); color: #6ee7b7; text-shadow: 0 0 42px rgba(52, 211, 153, 0.95); }
+  100% { transform: scale(1);    text-shadow: 0 0 22px rgba(52, 211, 153, 0.35); }
+}
 .code-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
 .chip {
   font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--text);
@@ -240,7 +246,8 @@ select:focus, input[type="text"]:focus {
   display: none; border-top: 1px dashed var(--border);
   padding: 11px 12px; background: var(--surface-2);
 }
-.mail.open .mail-body { display: block; }
+.mail.open .mail-body { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
 .mail.open .mail-caret { transform: rotate(90deg); }
 .mail-caret { color: var(--muted-2); font-size: 11px; transition: transform 0.15s; flex: none; }
 .mail-text {

@@ -68,6 +68,7 @@ async function copyText(text, btn) {
 // ---------------- 运行期变量 ----------------
 let services = [];
 let pollTimer = null;
+let lastShownCode = ''; // 已展示的验证码，用于触发「新码高亮」动画
 
 // ---------------- 服务 / 域名 ----------------
 function fillServices(list, current) {
@@ -171,7 +172,12 @@ function renderCodeAndMails(messages) {
   const cv = $('#codeValue');
   const chips = $('#codeChips');
   if (withCode) {
-    cv.textContent = withCode.codes[0]; cv.classList.remove('empty');
+    const newCode = withCode.codes[0];
+    if (newCode !== lastShownCode) { // 验证码变化时高亮闪动一次，提示「来新码了」
+      lastShownCode = newCode;
+      cv.classList.remove('flash'); void cv.offsetWidth; cv.classList.add('flash');
+    }
+    cv.textContent = newCode; cv.classList.remove('empty');
     chips.innerHTML = '';
     withCode.codes.forEach(function (c) {
       const el = document.createElement('button');
@@ -181,6 +187,7 @@ function renderCodeAndMails(messages) {
       chips.appendChild(el);
     });
   } else {
+    lastShownCode = '';
     cv.textContent = '等待验证码…'; cv.classList.add('empty'); chips.innerHTML = '';
   }
 
@@ -198,11 +205,17 @@ function renderCodeAndMails(messages) {
     return;
   }
 
+  // 记录当前展开的邮件 id，重建后恢复，避免轮询刷新时把用户正在看的邮件收起
+  const openIds = [];
+  document.querySelectorAll('#mailList .mail.open').forEach(function (el) { openIds.push(el.dataset.id); });
+
   listEl.innerHTML = '';
   messages.forEach(function (m, idx) {
     const code = (m.codes && m.codes[0]) || '';
     const div = document.createElement('div');
     div.className = 'mail' + (code ? ' has-code' : '');
+    div.dataset.id = String(m.id);
+    if (openIds.indexOf(String(m.id)) !== -1) div.classList.add('open');
     div.innerHTML =
       '<div class="mail-top">' +
         '<span class="mail-caret">▸</span>' +
