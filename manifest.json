@@ -19,7 +19,8 @@
     "https://api.mail.gw/*",
     "https://api.guerrillamail.com/*",
     "https://api.tempmail.lol/*",
-    "https://tempmail.plus/*"
+    "https://tempmail.plus/*",
+    "https://dustmail.net/*"
   ],
   "action": {
     "default_popup": "popup.html",

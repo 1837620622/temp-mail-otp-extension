@@ -19,8 +19,13 @@
 // mail.tm / mail.gw 登录用的固定密码（仅用于这两家需要账户的服务）
 const MAIL_PW = 'TmcMail2024!x';
 
+// DustMail API 密钥（从 https://dustmail.net/dashboard 获取）
+const DUSTMAIL_API_KEY = 'dm_live_uTDY_0KGHvyqiytV9pEPmmtIJgqAVhZ9';
+
 // 各服务元信息：key 唯一标识，selectableLogin 表示是否支持自定义用户名
+// DustMail 放在首位作为首发默认邮箱服务
 const SERVICES = [
+  { key: 'dust',      name: 'DustMail',       base: 'https://dustmail.net/api/v1',          selectableLogin: false, needAccount: false },
   { key: 'tm',        name: 'Mail.tm',        base: 'https://api.mail.tm',                 selectableLogin: true,  needAccount: true  },
   { key: 'gw',        name: 'Mail.gw',        base: 'https://api.mail.gw',                 selectableLogin: true,  needAccount: true  },
   { key: 'guerrilla', name: 'Guerrilla Mail', base: 'https://api.guerrillamail.com/ajax.php', selectableLogin: true,  needAccount: false },
@@ -41,7 +46,7 @@ function getService(key) {
 /* ============================== 全局状态 ============================== */
 
 let state = {
-  service: 'tm',     // 当前服务 key
+  service: 'dust',   // 当前服务 key（默认首选 DustMail）
   domain: '',        // 当前邮箱域名
   email: '',         // 当前邮箱地址
   token: '',         // mail.tm/gw 与 tmlol 的访问令牌
@@ -106,6 +111,27 @@ function htmlToText(html) {
   return t;
 }
 
+// 解码 RFC 2047 编码的主题行（如 =?UTF-8?B?6Zi/6YeM?=）
+function decodeSubject(subject) {
+  if (!subject || subject.indexOf('=?') === -1) return subject || '(无主题)';
+  try {
+    return subject.replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, function (_, charset, encoding, text) {
+      if (encoding.toUpperCase() === 'B') {
+        const bytes = Uint8Array.from(atob(text), function (c) { return c.charCodeAt(0); });
+        return new TextDecoder(charset).decode(bytes);
+      }
+      if (encoding.toUpperCase() === 'Q') {
+        return text.replace(/_/g, ' ').replace(/=([0-9A-Fa-f]{2})/g, function (_, h) {
+          return String.fromCharCode(parseInt(h, 16));
+        });
+      }
+      return text;
+    });
+  } catch (e) {
+    return subject;
+  }
+}
+
 // 通用验证码候选提取：通用网站验证码格式各异（纯数字/字母数字/各长度），
 // 因此优先匹配“关键词+紧随的码”，再退化为字母数字串、纯数字串；返回去重候选数组。
 // 注意：扩展会完整展示邮件全文，这里只是“快捷复制候选”，不替代全文。
@@ -113,7 +139,7 @@ function extractCodeCandidates(text) {
   if (!text) return [];
   const cands = [];
   const push = function (v) { if (v && cands.indexOf(v) === -1) cands.push(v); };
-  const kw = /(?:验证码|校验码|动态码|验证代码|verification code|verify code|security code|one[-\s]?time|code|otp|pin)\s*(?:is|为|是|：|:|=)?\s*([A-Z0-9]{4,8})/gi;
+  const kw = /(?:验证码|验证数字|验证數[字]?|校验码|动态码|验证代码|verification code|verify code|security code|one[-\s]?time|code|otp|pin)\s*(?:is|为|是|：|:|=)?\s*([A-Z0-9]{4,8})/gi;
   let m;
   while ((m = kw.exec(text)) !== null) push(m[1]);
   // 字母数字混合（同时含字母与数字，4-8 位）
@@ -312,7 +338,55 @@ const tmplusAdapter = {
   }
 };
 
-const ADAPTERS = { tm: tmAdapter, gw: tmAdapter, guerrilla: guerrillaAdapter, tmlol: tmlolAdapter, tmplus: tmplusAdapter };
+// ---------- DustMail（官方 API v1，需 API Key，无需账户） ----------
+const dustAdapter = {
+  async listDomains() { return ['dustmail.net']; },
+  async create(svc) {
+    const base = svc.base;
+    const r = await http(base + '/inbox', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + DUSTMAIL_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    });
+    if (!r.json || !r.json.success || !r.json.data || !r.json.data.email) {
+      return { ok: false, error: 'DustMail 创建收件箱失败 (HTTP ' + r.status + ')' };
+    }
+    state.email = r.json.data.email;
+    state.token = r.json.data.id;  // 用 token 字段存 inboxId
+    state.sidToken = '';
+    return { ok: true, email: state.email };
+  },
+  async inbox(svc) {
+    const base = svc.base;
+    if (!state.token) return [];
+    const r = await http(base + '/inbox/' + encodeURIComponent(state.token), {
+      headers: { 'Authorization': 'Bearer ' + DUSTMAIL_API_KEY }
+    });
+    const emails = (r.json && r.json.success && r.json.data && r.json.data.emails) || [];
+    const list = [];
+    for (const m of emails) {
+      const id = String(m.id || (m.received_at || '') + '|' + (m.from || '') + '|' + (m.subject || '') + '|' + Math.random().toString(36).slice(2, 6));
+      if (detailCache[id]) { list.push(detailCache[id]); continue; }
+      const text = (m.text && m.text.trim()) ? m.text : htmlToText(m.html || '');
+      const item = {
+        id: id,
+        from: m.from || '',
+        subject: decodeSubject(m.subject),
+        date: m.received_at || '',
+        text: text,
+        codes: extractCodeCandidates(text)
+      };
+      detailCache[id] = item;
+      list.push(item);
+    }
+    return list;
+  }
+};
+
+const ADAPTERS = { tm: tmAdapter, gw: tmAdapter, guerrilla: guerrillaAdapter, tmlol: tmlolAdapter, tmplus: tmplusAdapter, dust: dustAdapter };
 
 /* ============================== 高层操作 ============================== */
 
